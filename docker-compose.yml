@@ -1,0 +1,102 @@
+version: "3.8"
+
+services:
+  # ============================================================
+  # PostgreSQL — primary database for trips, drivers, pricing
+  # ============================================================
+  postgres:
+    image: postgres:16-alpine
+    container_name: ridedispatch-postgres
+    environment:
+      POSTGRES_USER: ridedispatch
+      POSTGRES_PASSWORD: ridedispatch
+      POSTGRES_DB: ridedispatch
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ridedispatch"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Redis — driver locations (GEO), availability, idempotency
+  # ============================================================
+  redis:
+    image: redis:7-alpine
+    container_name: ridedispatch-redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Temporal PostgreSQL — separate DB for Temporal's own state
+  # ============================================================
+  temporal-postgres:
+    image: postgres:16-alpine
+    container_name: ridedispatch-temporal-postgres
+    environment:
+      POSTGRES_USER: temporal
+      POSTGRES_PASSWORD: temporal
+      POSTGRES_DB: temporal
+    ports:
+      - "5433:5432"
+    volumes:
+      - temporal_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U temporal"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Temporal Server — workflow orchestration engine
+  # ============================================================
+  temporal:
+    image: temporalio/auto-setup:latest
+    container_name: ridedispatch-temporal
+    environment:
+      - DB=postgres12
+      - DB_PORT=5432
+      - POSTGRES_USER=temporal
+      - POSTGRES_PWD=temporal
+      - POSTGRES_SEEDS=temporal-postgres
+      - DYNAMIC_CONFIG_FILE_PATH=config/dynamicconfig/development-sql.yaml
+    ports:
+      - "7233:7233"   # gRPC frontend
+    depends_on:
+      temporal-postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "tctl", "--address", "temporal:7233", "cluster", "health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ============================================================
+  # Temporal UI — web dashboard to inspect workflows
+  # ============================================================
+  temporal-ui:
+    image: temporalio/ui:latest
+    container_name: ridedispatch-temporal-ui
+    environment:
+      - TEMPORAL_ADDRESS=temporal:7233
+      - TEMPORAL_CORS_ORIGINS=http://localhost:3000
+    ports:
+      - "8233:8080"   # Temporal UI on localhost:8233
+    depends_on:
+      - temporal
+
+volumes:
+  postgres_data:
+  redis_data:
+  temporal_postgres_data:
