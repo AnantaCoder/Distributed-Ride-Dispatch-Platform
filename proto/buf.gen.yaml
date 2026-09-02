@@ -1,0 +1,11 @@
+version: v2
+plugins:
+  # Generates standard Go structs for your Protobuf messages
+  - local: protoc-gen-go
+    out: ../gen
+    opt: paths=source_relative
+
+  # Generates the ConnectRPC server and client interfaces
+  - local: protoc-gen-connect-go
+    out: ../gen
+    opt: paths=source_relative

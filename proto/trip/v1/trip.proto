@@ -1,0 +1,94 @@
+syntax = "proto3";
+import "google/protobuf/timestamp.proto";
+
+package trip.v1;
+option go_package = "github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/gen/trip/v1;tripv1";
+
+enum TripStatus {
+    TRIP_STATUS_UNSPECIFIED = 0;
+    TRIP_STATUS_REQUESTED = 1;
+    TRIP_STATUS_IN_PROGRESS = 2;
+    TRIP_STATUS_COMPLETED = 3;
+    TRIP_STATUS_CANCELLED = 4;
+}
+
+// definiton of the trip object 
+message Trip{
+    string id = 1;
+    string user_id = 2;
+    string driver_id = 3;
+    Location pickup_location = 4;
+    Location dropoff_location = 5;
+    TripStatus status = 6;
+    google.protobuf.Timestamp created_at = 7;
+    google.protobuf.Timestamp updated_at = 8;
+}
+
+message Location{
+    double latitude = 1;
+    double longitude = 2;
+}
+
+//this is message for get trip request and response 
+message GetTripRequest {
+    string trip_id = 1;
+}
+message GetTripResponse {
+    Trip trip = 1;  
+}
+message CreateTripRequest{
+    string user_id = 1;
+    Location pickup_location = 2;
+    Location dropoff_location = 3;
+}
+message CreateTripResponse{
+    Trip trip = 1;
+}
+message UpdateTripRequest{
+    string trip_id = 1;
+    Location pickup_location = 2;
+    Location dropoff_location = 3;
+    TripStatus status = 4;
+}
+message UpdateTripResponse{
+    Trip trip = 1;
+}
+message CancelTripRequest{
+    string trip_id = 1;
+}
+message CancelTripResponse{
+    Trip trip = 1;
+}
+message CompleteTripRequest{
+    string trip_id = 1;
+}
+message CompleteTripResponse{
+    Trip trip = 1;
+}
+service TripService{
+   rpc GetTrip(GetTripRequest) returns (GetTripResponse);
+   rpc CreateTrip(CreateTripRequest) returns (CreateTripResponse);
+   rpc UpdateTrip(UpdateTripRequest) returns (UpdateTripResponse);
+   rpc CancelTrip(CancelTripRequest) returns (CancelTripResponse);
+   rpc CompleteTrip(CompleteTripRequest) returns (CompleteTripResponse);
+
+}
+
+
+/*
+Here is the breakdown of the "Weird Numbers" (1 vs 0) in your .proto file.
+
+2. Why Message Fields start at 1
+In a message like Trip, the numbers (= 1, = 2, = 3) are not values. They are Field Tags used to compress the data over the network. When Protobuf turns your message into binary, it doesn't send the string "user_id". It just sends the tag 2 followed by the data.
+why enums starts at 0 while message at 1:
+0 is mathematically an invalid tag number in Protobuf encoding, so you can never use = 0 in a message.
+You must always start at 1 and count upwards. (Tags 1 through 15 take up the least amount of bytes to send, so they are usually reserved for the most frequently used fields).
+
+
+1. Why Enums MUST start at 0
+In proto3 (the version of Protobuf we are using), the specification strictly requires that the first element in every enum must be mapped to zero (0).
+
+This zero value acts as the default value for the enum. If a client sends a Trip message but forgets to include the status field, Protobuf will automatically assign it the default value (0). By making 0 equal to UNSPECIFIED, you can easily write logic in Go to detect when someone forgot to send a status:
+If we had started at 1 = REQUESTED, then a missing status would accidentally default to REQUESTED, which could cause massive bugs in your dispatch system!
+
+*/

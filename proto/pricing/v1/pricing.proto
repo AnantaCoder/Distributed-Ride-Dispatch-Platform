@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package pricing.v1;
+
+option go_package = "github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/gen/pricing/v1;pricingv1";
+
+// this is message for price calculations which will send to user when creating a ride
+
+message Price {
+    string id = 1;
+    string ride_id = 2;
+    double base_fare = 3;
+    double distance_multiplier = 4;
+    double time_multiplier = 5;
+    double surge_multiplier = 6;
+    double tax_rate = 7;
+    double total_amount = 8;
+    string currency = 9;
+    string created_at = 10;
+    string updated_at = 11;
+}
+
+
+
+message GetPriceRequest{
+    string ride_id = 1;
+}
+
+message GetPriceResponse{
+    Price price = 1;
+}
+
+message CreatePriceRequest{
+    string ride_id = 1;
+    double base_fare = 2;
+    double distance_multiplier = 3;
+    double time_multiplier = 4;
+    double surge_multiplier = 5;
+    double tax_rate = 6;
+    string currency = 7;
+}
+
+message CreatePriceResponse{
+    Price price = 1;
+}
+
+message UpdatePriceRequest{
+    string ride_id = 1;
+    double base_fare = 2;
+    double distance_multiplier = 3;
+    double time_multiplier = 4;
+    double surge_multiplier = 5;
+    double tax_rate = 6;
+    string currency = 7;
+}
+
+message UpdatePriceResponse{
+    Price price = 1;
+}
+
+
+service PricingService{
+    rpc GetPrice(GetPriceRequest) returns (GetPriceResponse);
+    rpc CreatePrice(CreatePriceRequest) returns (CreatePriceResponse);
+    rpc UpdatePrice(UpdatePriceRequest) returns (UpdatePriceResponse);
+}

@@ -1,0 +1,66 @@
+syntax = "proto3";
+
+package driver.v1;
+
+option go_package = "github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/gen/driver/v1;driverv1";
+
+// DriverStatus represents the current status of a driver.
+enum DriverStatus {
+  DRIVER_STATUS_UNSPECIFIED = 0;
+  DRIVER_STATUS_OFFLINE = 1;
+  DRIVER_STATUS_ONLINE = 2;
+  DRIVER_STATUS_IN_TRIP = 3;
+  DRIVER_STATUS_NOT_ACCEPTING_RIDE_REQUEST = 4;
+}
+
+message Location {
+  double latitude = 1;
+  double longitude = 2;
+}
+
+message Driver {
+  string id = 1;
+  string name = 2;
+  string vehicle_id = 3;
+  DriverStatus status = 4;
+  Location current_location = 5;
+}
+
+message UpdateLocationRequest {
+  string driver_id = 1;
+  Location location = 2;
+}
+
+message UpdateLocationResponse {
+    Location location = 1;
+
+}
+
+// UpdateStatusRequest is sent to change the driver's availability.
+message UpdateStatusRequest {
+  string driver_id = 1;
+  DriverStatus status = 2;
+}
+
+message UpdateStatusResponse {
+    Driver driver = 1;
+}
+
+// GetDriverRequest requests details of a specific driver.
+message GetDriverRequest {
+  string driver_id = 1;
+}
+
+message GetDriverResponse {
+  Driver driver = 1;
+}
+
+// DriverService provides operations for managing drivers and their state.
+service DriverService {
+  // UpdateLocation updates the driver's current geographic location.
+  rpc UpdateLocation(UpdateLocationRequest) returns (UpdateLocationResponse);
+  // UpdateStatus changes the driver's availability status.
+  rpc UpdateStatus(UpdateStatusRequest) returns (UpdateStatusResponse);
+  // GetDriver retrieves a driver's details.
+  rpc GetDriver(GetDriverRequest) returns (GetDriverResponse);
+}
