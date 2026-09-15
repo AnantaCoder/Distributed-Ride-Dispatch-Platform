@@ -1,5 +1,7 @@
 # Distributed-Ride-Dispatch-Platform
 
+![High Level Architecture](./high_level_arch.png)
+
 ## Protobuf / Code Generation
 This project uses `buf` to manage and generate Protocol Buffers.
 
