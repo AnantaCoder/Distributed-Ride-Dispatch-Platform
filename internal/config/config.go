@@ -90,7 +90,7 @@ type WorkflowConfig struct {
 }
 
 // Load reads configuration from environment variables with sensible defaults.
-func Load() *Config {
+func LoadConfig() *Config {
 	return &Config{
 		Postgres: PostgresConfig{
 			Host:     envOrDefault("POSTGRES_HOST", "localhost"),
