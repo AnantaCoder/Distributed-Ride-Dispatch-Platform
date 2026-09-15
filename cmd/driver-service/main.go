@@ -59,7 +59,7 @@ func main(){
 
 	//deps injection
 	repository := driver.NewRepository(pgPool)
-	service := driver.NewService(repository, redisClient)
+	service := driver.NewService(repository, redisClient, config.Matching)
 	handler := driver.NewHandler(service)
 
 	// routers 

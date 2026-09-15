@@ -3,7 +3,9 @@ package driver
 import (
 	"context"
 	"errors"
+	"time"
 
+	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/config"
 	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 )
@@ -16,21 +18,24 @@ type Service interface{
 UpdateLocation(ctx context.Context , driverID uuid.UUID , lat float64 , lng float64 ) error
 SetAvailability(ctx context.Context , driverID uuid.UUID , isAvailable bool) error
 GetNearbyDrivers(ctx context.Context , lat float64 , lng float64 , radiusInMeters float64 ) ([]Driver , error)
+FindBestDriver(ctx context.Context, lat float64, lng float64) (*Driver, error)
 }
 
 //driver service is a concreate(actual) implimentation of the service 
 type driverService struct{
 	repo Repository
 	redis *redis.Client
+	matcher *Matcher
 }
 
 
 //new service now create a driver service with its dependencies 
 //constructor 
-func NewService(repo Repository , redisClient *redis.Client ) Service{
+func NewService(repo Repository , redisClient *redis.Client, cfg config.MatchingConfig) Service{
 	return &driverService{
 		repo : repo,
 		redis : redisClient,
+		matcher: NewMatcher(cfg),
 	}
 }
 
@@ -147,3 +152,66 @@ func (s *driverService) GetNearbyDrivers(ctx context.Context, lat float64, lng f
 
 	return drivers, nil
 }
+
+// FindBestDriver finds the best available driver near the given location.
+func (s *driverService) FindBestDriver(ctx context.Context, lat float64, lng float64) (*Driver, error) {
+	// 1. Get all nearby drivers within the configured max radius (convert km to meters)
+	nearbyDrivers, err := s.GetNearbyDrivers(ctx, lat, lng, s.matcher.cfg.MaxRadiusKm*1000)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(nearbyDrivers) == 0 {
+		return nil, errors.New("no drivers available in the area")
+	}
+
+	// 2. Convert to MatchCandidate structs
+	var candidates []MatchCandidate
+	now := time.Now()
+	for _, d := range nearbyDrivers {
+		// Only consider available drivers
+		if !d.IsAvailable {
+			continue
+		}
+
+		// Calculate approximate distance (Haversine formula estimation)
+		// 1 degree of lat/lng is roughly 111km
+		dLat := (d.CurrentLat - lat) * 111.0
+		dLng := (d.CurrentLng - lng) * 111.0
+		// squared distance is fine for relative matching
+		distKm := (dLat*dLat) + (dLng*dLng) 
+		
+		idleTime := now.Sub(d.UpdatedAt)
+
+		candidates = append(candidates, MatchCandidate{
+			DriverID:           d.ID,
+			Distance:           distKm,
+			Rating:             float64(d.Rating), // assuming rating is 1-5
+			RideAcceptanceRate: 1.0,               // Hardcoded for now
+			IdleTime:           idleTime,
+		})
+	}
+
+	if len(candidates) == 0 {
+		return nil, errors.New("no available drivers in the area")
+	}
+
+	// 3. Rank candidates
+	ranked := s.matcher.RankDrivers(candidates)
+	if len(ranked) == 0 {
+		return nil, errors.New("failed to rank drivers")
+	}
+
+	// 4. Return the best driver
+	bestCandidate := ranked[0]
+	
+	// We need to return the full driver object, so find it in our initial list
+	for _, d := range nearbyDrivers {
+		if d.ID == bestCandidate.DriverID {
+			return &d, nil
+		}
+	}
+
+	return nil, errors.New("failed to find best driver")
+}
+
