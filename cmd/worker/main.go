@@ -6,14 +6,16 @@ import (
 	"go.temporal.io/sdk/client"
 	"go.temporal.io/sdk/worker"
 	
+	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/config"
 	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/workflow"
 )
 
 func main() {
-	// 1. Create a Temporal Client
-	// Hint: Use client.Dial(client.Options{HostPort: "localhost:7233"})
+	// Load configuration
+	cfg := config.LoadConfig()
 
-	temporalClient , err := client.Dial(client.Options{HostPort:"127.0.0.1:7233"})
+	// 1. Create a Temporal Client
+	temporalClient , err := client.Dial(client.Options{HostPort: cfg.Temporal.Addr()})
 	if err != nil {
 		log.Fatalln("Failed to connect to Temporal", err)
 	}

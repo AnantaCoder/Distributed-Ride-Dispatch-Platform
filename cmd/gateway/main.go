@@ -11,16 +11,22 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.temporal.io/sdk/client"
 
+	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/config"
 	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/gateway"
 	myMiddleware "github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/middleware"
 )
 
 func main() {
+	// Load configuration
+	cfg := config.LoadConfig()
+
 	// 1. Connect to Redis (for idempotency)
-	rdb := redis.NewClient(&redis.Options{Addr: "localhost:6379"})
+	rdb := redis.NewClient(&redis.Options{Addr: cfg.Redis.Addr()})
+
+	//now connecting to temp	
 
 	// 2. Connect to Temporal (to start workflows)
-	tc, err := client.Dial(client.Options{HostPort: "127.0.0.1:7233"})
+	tc, err := client.Dial(client.Options{HostPort: cfg.Temporal.Addr()})
 	if err != nil {
 		log.Fatalln("Failed to connect to Temporal:", err)
 	}
