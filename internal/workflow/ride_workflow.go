@@ -1,13 +1,13 @@
 package workflow
 
 import (
+	"fmt"
 	"time"
 
 	"go.temporal.io/sdk/temporal"
 	"go.temporal.io/sdk/workflow"
 )
 
-// We need a struct to hold the data coming into the workflow
 type RideRequest struct {
 	RideID string
 	Lat    float64
@@ -15,8 +15,6 @@ type RideRequest struct {
 }
 
 func RideLifecycleWorkflow(ctx workflow.Context, req RideRequest) (string, error) {
-	// 1. Set up Activity Options (Timeouts and Retries)
-	// We want our activities to timeout after 10 seconds, and retry up to 3 times if they fail.
 	retryPolicy := &temporal.RetryPolicy{
 		InitialInterval:    time.Second,
 		BackoffCoefficient: 2.0,
@@ -28,14 +26,9 @@ func RideLifecycleWorkflow(ctx workflow.Context, req RideRequest) (string, error
 		RetryPolicy:         retryPolicy,
 	}
 	
-	// Apply these options to our context
 	ctx = workflow.WithActivityOptions(ctx, activityOpts)
-
-	// We need to tell Temporal what our activities are named, so it can find them
 	var activities *RideActivities 
 
-	// ---------------------------------------------------------
-	
 	// 1. Call the EstimatePriceActivity
 	var price int
 	err := workflow.ExecuteActivity(ctx, activities.EstimatePriceActivity, req.RideID).Get(ctx, &price)
@@ -50,12 +43,37 @@ func RideLifecycleWorkflow(ctx workflow.Context, req RideRequest) (string, error
 		return "", err
 	}
 
+	// NEW: Wait for the Driver to accept the ride!
+	signalChan := workflow.GetSignalChannel(ctx, "DriverAcceptedSignal")
+	timerFuture := workflow.NewTimer(ctx, 30*time.Second)
+	selector := workflow.NewSelector(ctx)
+
+	var signalReceived bool
+	
+	// If the signal arrives first, this block runs
+	selector.AddReceive(signalChan, func(c workflow.ReceiveChannel, more bool) {
+		c.Receive(ctx, nil) // We drain the channel
+		signalReceived = true
+	})
+
+	// If the timer expires first, this block runs
+	selector.AddFuture(timerFuture, func(f workflow.Future) {
+		// Do nothing, signalReceived remains false
+	})
+
+	// This is where the workflow actually PAUSES and sleeps!
+	selector.Select(ctx)
+
+	if !signalReceived {
+		return "", fmt.Errorf("timeout waiting for driver to accept")
+	}
+
+
 	// 3. Call the UpdateTripStatusActivity to mark it as "ASSIGNED"
 	err = workflow.ExecuteActivity(ctx, activities.UpdateTripStatusActivity, req.RideID, "ASSIGNED").Get(ctx, nil)
 	if err != nil {
 		return "", err
 	}
 
-	// If we got this far, the workflow succeeded!
 	return driverID, nil
 }
