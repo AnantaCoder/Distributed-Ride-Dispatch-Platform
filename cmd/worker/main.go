@@ -30,11 +30,12 @@ func main() {
 
 	// 3. Register the Workflow and Activities
 	w.RegisterWorkflow(workflow.RideLifecycleWorkflow)
-	// Hint: w.RegisterActivity(workflow.EstimatePriceActivity)
 	
-
-
-
+	// Create an instance of our activities
+	a := &workflow.RideActivities{}
+	w.RegisterActivity(a.EstimatePriceActivity)
+	w.RegisterActivity(a.FindAndAssignDriverActivity)
+	w.RegisterActivity(a.UpdateTripStatusActivity)
 
 	// 4. Start the Worker!
 	err = w.Run(worker.InterruptCh())
