@@ -121,7 +121,7 @@ func (s *driverService) GetNearbyDrivers(ctx context.Context, lat float64, lng f
 			Radius:     radiusInMeters,
 			RadiusUnit: "m", //meters
 		},
-		WithCoord: true,// gives drivers latitude and longitude 
+		WithCoord: true, //gives drivers latitude and longitude 
 		WithDist:  true, //distance from the search location 
 	}).Result()
 
@@ -137,12 +137,10 @@ func (s *driverService) GetNearbyDrivers(ctx context.Context, lat float64, lng f
 		if err != nil {
 			continue //skipping the driver if the id is invalid 
 		}
-
 		driver, err := s.repo.GetDriverByID(ctx, driverID) //fetcht the driver from DB
 		if err != nil {
 			continue //skipping the that driver if it throws error in db
 		}
-
 		// use the real-time location from Redis 
 		driver.CurrentLat = loc.Latitude
 		driver.CurrentLng = loc.Longitude
@@ -186,8 +184,8 @@ func (s *driverService) FindBestDriver(ctx context.Context, lat float64, lng flo
 		candidates = append(candidates, MatchCandidate{
 			DriverID:           d.ID,
 			Distance:           distKm,
-			Rating:             float64(d.Rating), // assuming rating is 1-5
-			RideAcceptanceRate: 1.0,               // Hardcoded for now
+			Rating:             float64(d.Rating), 
+			RideAcceptanceRate: 1.0,             
 			IdleTime:           idleTime,
 		})
 	}
