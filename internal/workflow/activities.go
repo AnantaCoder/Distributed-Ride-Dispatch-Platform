@@ -6,6 +6,7 @@ import (
 	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/driver"
 	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/pricing"
 	"github.com/AnantaCoder/Distributed-Ride-Dispatch-Platform/internal/trip"
+	"github.com/google/uuid"
 )
 
 type RideActivities struct {
@@ -22,17 +23,27 @@ func NewRideActivities(ts trip.Service, ds driver.Service, ps pricing.Service) *
 	}
 }
 
-func (a *RideActivities) EstimatePriceActivity(ctx context.Context, rideID string) (int, error) {
-	// Stub: Will call PricingService
-	return 1500, nil
+func (a *RideActivities) EstimatePriceActivity(ctx context.Context, req RideRequest) (int, error) {
+	// Removed DB trip fetch since Gateway doesn't create the trip yet
+	
+	price, err := a.PricingService.EstimatePrice(ctx, req.Lat, req.Lng, req.Lat+0.05, req.Lng+0.05)
+	if err != nil {
+		return 0, err
+	}
+	
+	return int(price), nil
 }
 
-func (a *RideActivities) FindAndAssignDriverActivity(ctx context.Context, rideID string) (string, error) {
-	// Stub: Will call DriverService matcher
-	return "driver-123", nil
+func (a *RideActivities) FindAndAssignDriverActivity(ctx context.Context, req RideRequest) (string, error) {
+	bestDriver, err := a.DriverService.FindBestDriver(ctx, req.Lat, req.Lng)
+	if err != nil {
+		return "", err
+	}
+	
+	return bestDriver.ID.String(), nil
 }
 
 func (a *RideActivities) UpdateTripStatusActivity(ctx context.Context, rideID string, status string) error {
-	// Stub: Will call TripService database update
-	return nil
+	_, err := a.TripService.UpdateTrip(ctx, uuid.MustParse(rideID), status)
+	return err
 }

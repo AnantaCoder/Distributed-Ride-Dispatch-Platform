@@ -31,14 +31,14 @@ func RideLifecycleWorkflow(ctx workflow.Context, req RideRequest) (string, error
 
 	// 1. Call the EstimatePriceActivity
 	var price int
-	err := workflow.ExecuteActivity(ctx, activities.EstimatePriceActivity, req.RideID).Get(ctx, &price)
+	err := workflow.ExecuteActivity(ctx, activities.EstimatePriceActivity, req).Get(ctx, &price)
 	if err != nil {
 		return "", err
 	}
 
 	// 2. Call the FindAndAssignDriverActivity
 	var driverID string
-	err = workflow.ExecuteActivity(ctx, activities.FindAndAssignDriverActivity, req.RideID).Get(ctx, &driverID)
+	err = workflow.ExecuteActivity(ctx, activities.FindAndAssignDriverActivity, req).Get(ctx, &driverID)
 	if err != nil {
 		return "", err
 	}
